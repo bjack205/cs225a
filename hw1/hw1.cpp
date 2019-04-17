@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <string>
+#include <fstream>
 
 #define QUESTION_1   1
 #define QUESTION_2   2
@@ -60,6 +61,20 @@ int main() {
 	timer.setLoopFrequency(1000); 
 	double start_time = timer.elapsedTime(); //secs
 	bool fTimerDidSleep = true;
+	
+	// Output file
+	int controller_number = QUESTION_2;  // change to the controller of the question you want : QUESTION_1, QUESTION_2, QUESTION_3, QUESTION_4, QUESTION_5
+	cout << "Question Number: ";
+	cin >> controller_number;
+
+	string filename = "prob" + to_string(controller_number) + ".txt";
+	cout << "Saving to file: " << filename << endl;
+	ofstream out_file(filename);
+
+	Eigen::VectorXd g(dof);
+	VectorXd q_desired = initial_q;   // change to the desired robot joint angles for the question
+	q_desired(0) = M_PI/2;
+
 
 	redis_client.set(CONTROLLER_RUNING_KEY, "1");
 	while (runloop) {
@@ -75,57 +90,103 @@ int main() {
 		// **********************
 		// WRITE YOUR CODE AFTER
 		// **********************
-		int controller_number = QUESTION_1;  // change to the controller of the question you want : QUESTION_1, QUESTION_2, QUESTION_3, QUESTION_4, QUESTION_5
 
 
 		// ---------------------------  question 1 ---------------------------------------
 		if(controller_number == QUESTION_1)
 		{
-			double kp = 0.0;      // chose your p gain
-			double kv = 0.0;      // chose your d gain
+			double kp = 400.0;      // chose your p gain
+			double kv = 40.0;      // chose your d gain
 
-			VectorXd q_desired = initial_q;   // change to the desired robot joint angles for the question
-
-			command_torques.setZero();  // change to the control torques you compute
+			command_torques = -kp*(robot->_q - q_desired) - kv*robot->_dq;
+			
+			out_file << robot->_q(0) << ", " << robot->_q(2) << ", " << robot->_q(3) << endl;
 		}
 
 		// ---------------------------  question 2 ---------------------------------------
 		if(controller_number == QUESTION_2)
 		{
 
-			command_torques.setZero();
+			double kp = 400.0;      // chose your p gain
+			double kv = 40.0;      // chose your d gain
+
+			VectorXd q_desired = initial_q;   // change to the desired robot joint angles for the question
+			q_desired(0) = M_PI/2;
+
+			// Calculate gravity vector
+			robot->gravityVector(g);
+			command_torques = -kp*(robot->_q - q_desired) - kv*robot->_dq + g;
+			
+			out_file << robot->_q(0) << ", " << robot->_q(2) << ", " << robot->_q(3) << endl;
 		}
 
 		// ---------------------------  question 3 ---------------------------------------
 		if(controller_number == QUESTION_3)
 		{
 
-			command_torques.setZero();
+			double kp = 400.0;      // chose your p gain
+			double kv = 40.0;      // chose your d gain
+
+			VectorXd q_desired = initial_q;   // change to the desired robot joint angles for the question
+			q_desired(0) = M_PI/2;
+
+			// Calculate gravity vector
+			robot->gravityVector(g);
+			command_torques = robot->_M*(-kp*(robot->_q - q_desired) - kv*robot->_dq) + g;
+			
+			out_file << robot->_q(0) << ", " << robot->_q(2) << ", " << robot->_q(3) << endl;
 		}
 
 		// ---------------------------  question 4 ---------------------------------------
 		if(controller_number == QUESTION_4)
 		{
 
-			command_torques.setZero();
+			Eigen::VectorXd g(robot->dof());
+
+			double kp = 400.0;      // chose your p gain
+			double kv = 40.0;      // chose your d gain
+
+			VectorXd q_desired = initial_q;   // change to the desired robot joint angles for the question
+			q_desired(0) = M_PI/2;
+
+			// Calculate coriolis and gravity vector
+			robot->coriolisPlusGravity(g);
+			command_torques = robot->_M*(-kp*(robot->_q - q_desired) - kv*robot->_dq) + g;
+			
+			out_file << robot->_q(0) << ", " << robot->_q(2) << ", " << robot->_q(3) << endl;
 		}
 
 		// ---------------------------  question 5 ---------------------------------------
 		if(controller_number == QUESTION_5)
 		{
 
-			command_torques.setZero();
+			Eigen::VectorXd g(robot->dof());
+
+			double kp = 400.0;      // chose your p gain
+			double kv = 40.0;      // chose your d gain
+
+			VectorXd q_desired = initial_q;   // change to the desired robot joint angles for the question
+			q_desired(0) = M_PI/2;
+
+			// Calculate coriolis and gravity vector
+			robot->coriolisPlusGravity(g);
+			command_torques = robot->_M*(-kp*(robot->_q - q_desired) - kv*robot->_dq) + g;
+			
+			out_file << robot->_q(0) << ", " << robot->_q(2) << ", " << robot->_q(3) << endl;
 		}
+
 
 		// **********************
 		// WRITE YOUR CODE BEFORE
 		// **********************
 
+
+
 		// send to redis
 		redis_client.setEigenMatrixJSON(JOINT_TORQUES_COMMANDED_KEY, command_torques);
 
 		controller_counter++;
-
+		
 	}
 
 	command_torques.setZero();
